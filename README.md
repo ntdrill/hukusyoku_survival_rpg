@@ -41,12 +41,11 @@ sudo dnf install git
 ```bash
 git clone https://github.com/ntdrill/hukusyoku_survival_rpg.git
 ```
+*git(githubじゃない)のインストールとログインが必要です。お手数おかけします。
 
 ### 2. フォルダに移動
 
-```bash
-cd hukusyoku_survival_rpg
-```
+エクスプローラーでhukusyoku_survival_rpgフォルダを開く
 
 ### 3. ゲームを起動
 
@@ -55,6 +54,7 @@ cd hukusyoku_survival_rpg
 ### 4. 操作方法
 
 - **移動**: 矢印キー（↑↓←→）または WASD キー
+- **タイル比率のスライダー**: マウスカーソルまたはクリックして矢印キー(←→)
 
 以上！楽しんでください 🎮✨
 
