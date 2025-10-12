@@ -44,7 +44,8 @@ git clone https://github.com/ntdrill/hukusyoku_survival_rpg.git
 
 `index.html` をダブルクリックしてブラウザで開く
 
-### 5. 操作方法
+---
+## 操作
 
 - **移動**: 矢印キー（↑↓←→）または WASD キー
 - **タイル比率のスライダー**: マウスカーソルまたはクリックして矢印キー(←→)
