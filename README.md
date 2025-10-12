@@ -4,7 +4,39 @@
 
 ## 🚀 プレイ方法
 
+### 0. Gitのインストール（初回のみ）
+
+Gitがインストールされていない場合は、まずインストールします。
+
+#### Windowsの場合
+1. [Git公式サイト](https://git-scm.com/download/win)にアクセス
+2. インストーラーをダウンロード
+3. インストーラーを実行（基本的にデフォルト設定でOK）
+4. インストール完了後、コマンドプロンプトまたはPowerShellを開いて確認：
+   ```bash
+   git --version
+   ```
+
+#### Macの場合
+1. ターミナルを開く
+2. 以下のコマンドを実行：
+   ```bash
+   git --version
+   ```
+3. Gitがインストールされていない場合、自動的にインストーラーが起動します
+
+#### Linuxの場合
+```bash
+# Ubuntu/Debian
+sudo apt-get install git
+
+# Fedora
+sudo dnf install git
+```
+
 ### 1. リポジトリをクローン
+
+コマンドプロンプト（Windows）またはターミナル（Mac/Linux）を開いて、以下を実行：
 
 ```bash
 git clone https://github.com/ntdrill/hukusyoku_survival_rpg.git
@@ -34,3 +66,11 @@ cd hukusyoku_survival_rpg
 - マップは30秒ごとに自動再生成されます
 - 岩は通過できません
 - おばけに遭遇するとイベントが発生します
+
+## 🔧 トラブルシューティング
+
+### 「git: コマンドが見つかりません」と表示される
+→ Gitがインストールされていないか、パスが通っていません。上記の「Gitのインストール」を参照してください。
+
+### ブラウザで開いても何も表示されない
+→ `index.html` が正しく開かれているか確認してください。アドレスバーに `file://` で始まるパスが表示されているはずです。
