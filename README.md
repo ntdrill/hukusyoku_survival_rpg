@@ -34,24 +34,46 @@ sudo apt-get install git
 sudo dnf install git
 ```
 
-### 1. リポジトリをクローン
+### 1. Gitの初期設定（初回のみ）
+
+Gitを初めて使う場合は、名前とメールアドレスを設定します：
+
+```bash
+git config --global user.name "あなたの名前"
+git config --global user.email "your-email@example.com"
+```
+
+**例:**
+```bash
+git config --global user.name "Taro Yamada"
+git config --global user.email "taro@example.com"
+```
+
+※ GitHubアカウントのメールアドレスを使用してください
+
+設定を確認：
+```bash
+git config --global user.name
+git config --global user.email
+```
+
+### 2. リポジトリをクローン
 
 コマンドプロンプト（Windows）またはターミナル（Mac/Linux）を開いて、以下を実行：
 
 ```bash
 git clone https://github.com/ntdrill/hukusyoku_survival_rpg.git
 ```
-*git(githubじゃない)のインストールとログインが必要です。お手数おかけします。
 
-### 2. フォルダに移動
+### 3. フォルダに移動
 
 エクスプローラーでhukusyoku_survival_rpgフォルダを開く
 
-### 3. ゲームを起動
+### 4. ゲームを起動
 
 `index.html` をダブルクリックしてブラウザで開く
 
-### 4. 操作方法
+### 5. 操作方法
 
 - **移動**: 矢印キー（↑↓←→）または WASD キー
 - **タイル比率のスライダー**: マウスカーソルまたはクリックして矢印キー(←→)
@@ -71,6 +93,14 @@ git clone https://github.com/ntdrill/hukusyoku_survival_rpg.git
 
 ### 「git: コマンドが見つかりません」と表示される
 → Gitがインストールされていないか、パスが通っていません。上記の「Gitのインストール」を参照してください。
+
+### 「Please tell me who you are」と表示される
+→ Gitの初期設定がされていません。上記の「Gitの初期設定」を参照してください。
+
+### クローン時にパスワードを求められる
+→ GitHubアカウントのユーザー名とパスワード（またはPersonal Access Token）を入力してください。
+- 2021年以降、パスワード認証が廃止されたため、Personal Access Tokenが必要です
+- [GitHubでトークンを作成](https://github.com/settings/tokens)し、パスワードの代わりに使用してください
 
 ### ブラウザで開いても何も表示されない
 → `index.html` が正しく開かれているか確認してください。アドレスバーに `file://` で始まるパスが表示されているはずです。
