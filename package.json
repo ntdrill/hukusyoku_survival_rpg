@@ -1,0 +1,14 @@
+{
+  "name": "fukushoku-rpg",
+  "version": "1.0.0",
+  "description": "2DグリッドベースのRPGゲーム",
+  "scripts": {
+    "dev": "echo 'ブラウザでindex.htmlを開いてください'",
+    "start": "echo 'ブラウザでindex.htmlを開いてください'"
+  },
+  "keywords": ["game", "rpg", "2d", "canvas"],
+  "author": "",
+  "license": "MIT"
+}
+
+
