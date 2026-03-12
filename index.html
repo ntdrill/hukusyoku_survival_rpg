@@ -5,233 +5,507 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>復職RPG</title>
     <style>
+        /* ===== ベース ===== */
+        * { box-sizing: border-box; }
         body {
             margin: 0;
             padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             min-height: 100vh;
-            background-color: #2c3e50;
-            font-family: 'Arial', sans-serif;
-        }
-
-        h1 {
-            color: #ecf0f1;
-            margin-bottom: 20px;
-        }
-
-        #gameCanvas {
-            border: 4px solid #34495e;
             background-color: #1a252f;
+            font-family: 'Arial', sans-serif;
+            color: #ecf0f1;
+        }
+        h1 {
+            margin: 0 0 16px 0;
+            font-size: 1.4em;
+            color: #3498db;
+            letter-spacing: 2px;
+        }
+
+        /* ===== ゲームエリア ===== */
+        .game-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        #gameArea {
+            position: relative;
+            flex-shrink: 0;
+        }
+        #gameCanvas {
+            display: block;
+            border: 3px solid #2c3e50;
             image-rendering: pixelated;
             image-rendering: crisp-edges;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
 
-        .controls {
-            margin-top: 20px;
-            color: #ecf0f1;
-            text-align: center;
-            background-color: #34495e;
-            padding: 15px 30px;
-            border-radius: 8px;
-        }
-
-        .controls p {
-            margin: 5px 0;
-        }
-
-        .key-hint {
-            display: inline-block;
-            background-color: #2c3e50;
-            padding: 5px 10px;
-            border-radius: 4px;
-            margin: 0 5px;
-            font-weight: bold;
-        }
-
-        .tile-config {
-            margin-top: 20px;
-            color: #ecf0f1;
-            background-color: #34495e;
-            padding: 20px;
-            border-radius: 8px;
-            max-width: 600px;
-        }
-
-        .tile-config h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
-            color: #3498db;
-        }
-
-        .slider-container {
-            margin-bottom: 15px;
-        }
-
-        .slider-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 0.95em;
-        }
-
-        .slider-label .tile-name {
-            font-weight: bold;
-        }
-
-        .slider-label .tile-value {
-            color: #3498db;
-        }
-
-        input[type="range"] {
-            width: 100%;
-            height: 8px;
-            border-radius: 5px;
+        /* ===== ステータスパネル ===== */
+        #statusPanel {
+            width: 150px;
             background: #2c3e50;
-            outline: none;
-            -webkit-appearance: none;
+            border-radius: 8px;
+            padding: 14px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+        #statusPanel h3 {
+            margin: 0 0 12px 0;
+            font-size: 0.7em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #7f8c8d;
+            border-bottom: 1px solid #34495e;
+            padding-bottom: 6px;
+        }
+        .status-item {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 14px;
+        }
+        .status-label {
+            font-size: 0.7em;
+            color: #7f8c8d;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-bar-wrap {
+            background: #1a252f;
+            border-radius: 3px;
+            height: 6px;
+            overflow: hidden;
+            margin-bottom: 3px;
+        }
+        .status-bar {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s ease, background-color 0.4s ease;
+        }
+        #hpBar  { background-color: #e74c3c; width: 100%; }
+        #mpBar  { background-color: #3498db; width: 100%; }
+        .status-val {
+            font-size: 0.85em;
+            color: #ecf0f1;
+            font-weight: bold;
+        }
+        .status-redacted {
+            font-size: 0.85em;
+            color: #555;
+            letter-spacing: 2px;
         }
 
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #3498db;
+        /* ===== 凡例 ===== */
+        #legend {
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px solid #34495e;
+            font-size: 0.65em;
+            color: #7f8c8d;
+            line-height: 1.8;
+        }
+        #legend .leg-row { display: flex; align-items: center; gap: 5px; }
+        .leg-color {
+            width: 10px; height: 10px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        /* ===== 会話ウィンドウ（キャンバス下部オーバーレイ） ===== */
+        #dialogueBox {
+            display: none;
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(20, 30, 40, 0.97);
+            border-top: 2px solid #3498db;
+            padding: 12px 16px 10px;
+            flex-direction: column;
+            min-height: 110px;
+        }
+        #npcName {
+            font-size: 0.75em;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        #dialogueText {
+            font-size: 0.88em;
+            color: #ecf0f1;
+            line-height: 1.6;
+            flex: 1;
+        }
+        #dialogueHint {
+            text-align: right;
+            font-size: 0.7em;
+            color: #5d6d7e;
+            margin-top: 6px;
+            animation: blink 1.5s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* ===== 戦闘画面（キャンバス全面オーバーレイ） ===== */
+        #battleScreen {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(10, 15, 25, 0.97);
+            flex-direction: column;
+            padding: 18px;
+            gap: 10px;
+        }
+        #enemyArea {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        #enemyName {
+            font-size: 1.05em;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        .enemy-hp-wrap {
+            background: #1a252f;
+            border-radius: 4px;
+            height: 10px;
+            overflow: hidden;
+        }
+        #enemyHpBar {
+            height: 100%;
+            background: #e74c3c;
+            border-radius: 4px;
+            width: 100%;
+            transition: width 0.4s ease;
+        }
+        #enemyHpText {
+            font-size: 0.75em;
+            color: #95a5a6;
+        }
+        #playerBattleStatus {
+            display: flex;
+            gap: 14px;
+            font-size: 0.85em;
+            color: #bdc3c7;
+            padding: 6px 0;
+            border-top: 1px solid #2c3e50;
+            border-bottom: 1px solid #2c3e50;
+        }
+        #playerBattleHp { color: #e74c3c; font-weight: bold; }
+        #playerBattleMp { color: #3498db; font-weight: bold; }
+        #battleLog {
+            flex: 1;
+            overflow-y: auto;
+            font-size: 0.78em;
+            color: #bdc3c7;
+            line-height: 1.7;
+            padding: 4px 0;
+        }
+        #battleLog p { margin: 0; }
+        #battleActions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px;
+        }
+        .battle-btn {
+            padding: 9px 6px;
+            background: #34495e;
+            color: #ecf0f1;
+            border: 1px solid #4a6278;
+            border-radius: 5px;
             cursor: pointer;
+            font-size: 0.77em;
+            font-family: inherit;
+            transition: background 0.15s, opacity 0.15s;
+        }
+        .battle-btn:hover:not(:disabled) { background: #4a6278; }
+        .battle-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        #attackBtn { color: #e67e22; border-color: #e67e22; }
+        #tech_breathing             { color: #2ecc71; border-color: #2ecc71; }
+        #tech_mindfulness           { color: #9b59b6; border-color: #9b59b6; }
+        #tech_cognitive_restructuring { color: #3498db; border-color: #3498db; }
+        #escapeBtn { grid-column: 1 / -1; color: #7f8c8d; border-color: #7f8c8d; font-size: 0.72em; }
+
+        /* ===== 石板画面（キャンバス全面オーバーレイ） ===== */
+        #tabletScreen {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 10, 5, 0.97);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            gap: 16px;
+        }
+        #tabletName {
+            font-size: 0.85em;
+            font-weight: bold;
+            color: #F5DEB3;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+        #tabletText {
+            font-size: 0.83em;
+            color: #d4c8a8;
+            white-space: pre-line;
+            text-align: center;
+            line-height: 1.9;
+            border: 1px solid #8B4513;
+            background: rgba(139,69,19,0.1);
+            padding: 16px 24px;
+            border-radius: 6px;
+        }
+        .tablet-close-hint {
+            font-size: 0.72em;
+            color: #7f8c8d;
+            animation: blink 1.5s infinite;
         }
 
-        input[type="range"]::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
+        /* ===== クリア画面 ===== */
+        #clearScreen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.88);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            z-index: 100;
+        }
+        #clearScreen h2 {
+            font-size: 2em;
+            margin: 0;
+            color: #FFD700;
+        }
+        #clearScreen p {
+            margin: 0;
+            font-size: 0.95em;
+            color: #bdc3c7;
+            text-align: center;
+            line-height: 1.7;
+        }
+        .clear-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.85em;
+        }
+        .clear-stat { color: #ecf0f1; }
+        .clear-stat span { color: #2ecc71; font-weight: bold; }
+
+        /* ===== ゲームオーバー画面 ===== */
+        #gameoverScreen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.88);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            z-index: 100;
+        }
+        #gameoverScreen h2 {
+            font-size: 2em;
+            margin: 0;
+            color: #e74c3c;
+        }
+        #gameoverScreen p {
+            margin: 0;
+            font-size: 0.9em;
+            color: #bdc3c7;
+            text-align: center;
+            line-height: 1.7;
+        }
+
+        /* ===== 共通ボタン ===== */
+        .menu-btn {
+            padding: 11px 28px;
             background: #3498db;
-            cursor: pointer;
-            border: none;
-        }
-
-        .regenerate-btn {
-            margin-top: 15px;
-            padding: 10px 20px;
-            background-color: #3498db;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 1em;
+            font-size: 0.9em;
+            font-family: inherit;
             font-weight: bold;
-            transition: background-color 0.3s;
+            transition: background 0.2s;
         }
+        .menu-btn:hover { background: #2980b9; }
 
-        .regenerate-btn:hover {
-            background-color: #2980b9;
-        }
-
-        .regenerate-btn:active {
-            background-color: #1c5c8a;
-        }
-
-        .total-indicator {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #2c3e50;
-            border-radius: 5px;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .total-indicator.valid {
+        /* ===== トースト通知 ===== */
+        #notification {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2c3e50;
             color: #2ecc71;
+            font-weight: bold;
+            border: 1px solid #2ecc71;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.82em;
+            z-index: 200;
+            white-space: nowrap;
         }
 
-        .total-indicator.invalid {
-            color: #e74c3c;
+        /* ===== 操作説明 ===== */
+        .controls {
+            margin-top: 14px;
+            font-size: 0.75em;
+            color: #5d6d7e;
+            text-align: center;
+            line-height: 2;
+        }
+        .controls .key {
+            display: inline-block;
+            background: #2c3e50;
+            border: 1px solid #34495e;
+            border-radius: 3px;
+            padding: 1px 6px;
+            font-family: monospace;
+            color: #ecf0f1;
         }
     </style>
 </head>
 <body>
-    <h1>🎮 復職RPG</h1>
-    <canvas id="gameCanvas"></canvas>
-    <div class="controls">
-        <p>ゲームの機能</p>
-        <p>
-            🎯 <strong>グリッドベースの2D RPG</strong><br>
-            主人公（矢印）をキーボードで操作して探索
-        </p>
-        <p>
-            🎨 <strong>ドット絵風のグラフィック</strong><br>
-            地面・草・岩・おばけが配置された世界
-        </p>
-        <p>
-            🚧 <strong>衝突判定システム</strong><br>
-            岩は通過不可・おばけとの遭遇イベント
-        </p>
-        <p>
-            🔄 <strong>動的なマップ変化</strong><br>
-            30秒ごとに地形が自動的に再生成
-        </p>
-        <p>
-            ⚙️ <strong>カスタマイズ可能な地形比率</strong><br>
-            各タイルの出現確率をリアルタイムで調整可能
-        </p>
-        <p>
-            ✨ <strong>スムーズな移動アニメーション</strong><br>
-            向きに応じた矢印の回転と滑らかな移動
-        </p>
-        <p style="margin-top: 15px; font-size: 0.85em; opacity: 0.7;">
-            操作: 矢印キー or WASD
-        </p>
+    <h1>復職RPG — プロトタイプ</h1>
+
+    <div class="game-wrapper">
+
+        <!-- ゲームキャンバス + オーバーレイ -->
+        <div id="gameArea">
+            <canvas id="gameCanvas"></canvas>
+
+            <!-- 会話ウィンドウ -->
+            <div id="dialogueBox">
+                <div id="npcName">NPC名前</div>
+                <div id="dialogueText">セリフ...</div>
+                <div id="dialogueHint">▼ Enter / Space で続ける</div>
+            </div>
+
+            <!-- 戦闘画面 -->
+            <div id="battleScreen">
+                <div id="enemyArea">
+                    <div id="enemyName">敵名前</div>
+                    <div class="enemy-hp-wrap">
+                        <div id="enemyHpBar"></div>
+                    </div>
+                    <div id="enemyHpText">HP: -- / --</div>
+                </div>
+
+                <div id="playerBattleStatus">
+                    <span id="playerBattleHp">HP: 100</span>
+                    <span id="playerBattleMp" style="display:none">MP: 100</span>
+                </div>
+
+                <div id="battleLog"></div>
+
+                <div id="battleActions">
+                    <button class="battle-btn" id="attackBtn"
+                        onclick="doBattleAction('attack')">攻撃</button>
+
+                    <button class="battle-btn" id="tech_breathing"
+                        onclick="doBattleAction('technique','breathing')">
+                        呼吸法 (MP:5)
+                    </button>
+
+                    <button class="battle-btn" id="tech_mindfulness"
+                        onclick="doBattleAction('technique','mindfulness')">
+                        マインドフルネス (MP:10)
+                    </button>
+
+                    <button class="battle-btn" id="tech_cognitive_restructuring"
+                        onclick="doBattleAction('technique','cognitive_restructuring')">
+                        認知再構成 (MP:15)
+                    </button>
+
+                    <button class="battle-btn" id="escapeBtn"
+                        onclick="doBattleAction('escape')">逃げる</button>
+                </div>
+            </div>
+
+            <!-- 石板画面 -->
+            <div id="tabletScreen">
+                <div id="tabletName">石板の名前</div>
+                <div id="tabletText">内容...</div>
+                <div class="tablet-close-hint">▼ Enter / Space で閉じる</div>
+            </div>
+        </div>
+
+        <!-- ステータスパネル -->
+        <div id="statusPanel">
+            <h3>ステータス</h3>
+
+            <!-- HP（常に表示） -->
+            <div class="status-item" id="hpPanel">
+                <div class="status-label">HP</div>
+                <div class="status-bar-wrap">
+                    <div class="status-bar" id="hpBar"></div>
+                </div>
+                <div class="status-val" id="hpValue">100</div>
+            </div>
+
+            <!-- MP（石板入手後に表示） -->
+            <div class="status-item" id="mpPanel" style="display:none">
+                <div class="status-label">MP</div>
+                <div class="status-bar-wrap">
+                    <div class="status-bar" id="mpBar" style="display:none"></div>
+                </div>
+                <div class="status-val" id="mpValue">███</div>
+            </div>
+
+            <!-- 凡例 -->
+            <div id="legend">
+                <div class="leg-row"><div class="leg-color" style="background:#FFDAB9"></div>あなた（主人公）</div>
+                <div class="leg-row"><div class="leg-color" style="background:#FFD700"></div>NPC（話せる）</div>
+                <div class="leg-row"><div class="leg-color" style="background:#E8EAFF"></div>おばけ（物理無効）</div>
+                <div class="leg-row"><div class="leg-color" style="background:#FF5555"></div>モンスター</div>
+                <div class="leg-row"><div class="leg-color" style="background:#8B4513"></div>石板（入手可）</div>
+                <div class="leg-row"><div class="leg-color" style="background:#FFD700"></div>ゴール（宝石）</div>
+            </div>
+        </div>
     </div>
 
-    <div class="tile-config">
-        <h3>⚙️ タイル出現比率の調整</h3>
-        
-        <div class="slider-container">
-            <div class="slider-label">
-                <span class="tile-name">🟫 地面</span>
-                <span class="tile-value" id="groundValue">60%</span>
-            </div>
-            <input type="range" id="groundSlider" min="0" max="100" value="60">
+    <!-- クリア画面（固定オーバーレイ） -->
+    <div id="clearScreen">
+        <h2>🎉 クリア！</h2>
+        <p>復職初日を無事に終えました。<br>お疲れ様でした。</p>
+        <div class="clear-stats">
+            <div class="clear-stat">残りHP: <span id="clearHp">100</span></div>
+            <div class="clear-stat">残りMP: <span id="clearMp">???</span></div>
         </div>
+        <button class="menu-btn" onclick="restartGame()">もう一度プレイ</button>
+    </div>
 
-        <div class="slider-container">
-            <div class="slider-label">
-                <span class="tile-name">🟩 草</span>
-                <span class="tile-value" id="grassValue">25%</span>
-            </div>
-            <input type="range" id="grassSlider" min="0" max="100" value="25">
-        </div>
+    <!-- ゲームオーバー画面（固定オーバーレイ） -->
+    <div id="gameoverScreen">
+        <h2>💔 力尽きた…</h2>
+        <p>今日は無理をしすぎました。<br>明日また試みましょう。</p>
+        <button class="menu-btn" onclick="restartGame()">もう一度</button>
+    </div>
 
-        <div class="slider-container">
-            <div class="slider-label">
-                <span class="tile-name">⬛ 岩</span>
-                <span class="tile-value" id="rockValue">10%</span>
-            </div>
-            <input type="range" id="rockSlider" min="0" max="100" value="10">
-        </div>
+    <!-- トースト通知 -->
+    <div id="notification"></div>
 
-        <div class="slider-container">
-            <div class="slider-label">
-                <span class="tile-name">👻 おばけ</span>
-                <span class="tile-value" id="ghostValue">5%</span>
-            </div>
-            <input type="range" id="ghostSlider" min="0" max="100" value="5">
-        </div>
-
-        <div class="total-indicator valid" id="totalIndicator">
-            合計: 100%
-        </div>
-
-        <button class="regenerate-btn" onclick="applyTileRates()">
-            🔄 設定を適用してマップ再生成
-        </button>
+    <!-- 操作説明 -->
+    <div class="controls">
+        移動: <span class="key">↑</span><span class="key">↓</span><span class="key">←</span><span class="key">→</span>
+        または <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span>
+        &nbsp;|&nbsp;
+        決定: <span class="key">Enter</span> / <span class="key">Space</span>
     </div>
 
     <script src="game.js"></script>
 </body>
 </html>
-

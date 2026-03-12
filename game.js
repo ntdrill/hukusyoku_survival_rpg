@@ -1,567 +1,753 @@
-// ゲーム設定
+// ===== 定数 =====
 const TILE_SIZE = 32;
 const GRID_WIDTH = 20;
 const GRID_HEIGHT = 15;
-const MAP_REGENERATE_INTERVAL = 30000; // 30秒ごとにマップ再生成（ミリ秒）
-const MOVE_ANIMATION_DURATION = 150; // 移動アニメーション時間（ミリ秒）
+const MOVE_ANIMATION_DURATION = 150;
 
-// タイルの出現比率（合計が1.0になるように調整）
-let TILE_SPAWN_RATES = {
-    GROUND: 0.60,   // 60% 地面
-    GRASS: 0.25,    // 25% 草
-    ROCK: 0.10,     // 10% 岩
-    GHOST: 0.05     // 5% おばけ
+const TILES = { GROUND: 0, GRASS: 1, ROCK: 2 };
+const DIRECTIONS = { UP: 0, RIGHT: 1, DOWN: 2, LEFT: 3 };
+const VISIBILITY = { HIDDEN: 0, REDACTED: 1, LEVEL: 2, NUMERIC: 3 };
+
+// ===== カラーパレット (0=透明) =====
+const PALETTE = [
+    null,        // 0: 透明
+    '#FFDAB9',   // 1: 肌色
+    '#3D2B1F',   // 2: 黒髪
+    '#F0F0F0',   // 3: ワイシャツ（白）
+    '#1E3A5F',   // 4: スーツ（紺）
+    '#111111',   // 5: 靴（黒）
+    '#CC2200',   // 6: ネクタイ（赤）
+    '#E8EAFF',   // 7: おばけ体（青白）
+    '#4455FF',   // 8: おばけ目（青）
+    '#FFD700',   // 9: 金色（NPC服・クリアアイテム）
+    '#1565C0',   // 10: 青ズボン（NPC）
+    '#FF5555',   // 11: 赤（モンスター体）
+    '#8B4513',   // 12: 茶色（石板外枠）
+    '#F5DEB3',   // 13: 小麦色（石板内側）
+    '#FF8800',   // 14: オレンジ（モンスター目）
+    '#FFFF44',   // 15: 明黄色（クリアアイテム輝き）
+];
+
+// ===== スプライト定義 8×8ピクセルアート =====
+const SPRITES = {
+    PLAYER_DOWN: [
+        [0,0,2,2,2,2,0,0],
+        [0,2,1,1,1,1,2,0],
+        [0,1,0,1,1,0,1,0],
+        [0,1,1,1,1,1,1,0],
+        [0,4,3,6,6,3,4,0],
+        [0,4,4,4,4,4,4,0],
+        [0,0,4,0,0,4,0,0],
+        [0,0,5,0,0,5,0,0],
+    ],
+    PLAYER_UP: [
+        [0,0,2,2,2,2,0,0],
+        [0,2,2,2,2,2,2,0],
+        [0,2,1,1,1,1,2,0],
+        [0,0,1,1,1,1,0,0],
+        [0,4,4,4,4,4,4,0],
+        [0,4,4,4,4,4,4,0],
+        [0,0,4,0,0,4,0,0],
+        [0,0,5,0,0,5,0,0],
+    ],
+    PLAYER_LEFT: [
+        [0,0,2,2,2,0,0,0],
+        [0,2,1,1,1,2,0,0],
+        [0,2,0,1,1,1,0,0],
+        [0,0,1,1,1,1,0,0],
+        [0,0,4,3,6,4,0,0],
+        [0,4,4,4,4,0,0,0],
+        [0,0,4,0,4,0,0,0],
+        [0,0,5,0,5,0,0,0],
+    ],
+    PLAYER_RIGHT: [
+        [0,0,0,2,2,2,0,0],
+        [0,0,2,1,1,1,2,0],
+        [0,0,1,1,1,0,2,0],
+        [0,0,1,1,1,1,0,0],
+        [0,0,4,6,3,4,0,0],
+        [0,0,0,4,4,4,4,0],
+        [0,0,0,4,0,4,0,0],
+        [0,0,0,5,0,5,0,0],
+    ],
+    GHOST: [
+        [0,0,7,7,7,7,0,0],
+        [0,7,7,7,7,7,7,0],
+        [0,7,8,7,7,8,7,0],
+        [0,7,8,7,7,8,7,0],
+        [0,7,7,7,7,7,7,0],
+        [0,7,7,7,7,7,7,0],
+        [7,7,0,7,7,0,7,7],
+        [7,0,0,7,7,0,0,7],
+    ],
+    NPC: [
+        [0,0,1,1,1,1,0,0],
+        [0,1,1,1,1,1,1,0],
+        [0,1,2,1,1,2,1,0],
+        [0,0,1,1,1,1,0,0],
+        [0,9,9,9,9,9,9,0],
+        [0,9,9,9,9,9,9,0],
+        [0,10,10,0,0,10,10,0],
+        [0,10,10,0,0,10,10,0],
+    ],
+    MONSTER: [
+        [0,11,11,11,11,11,11,0],
+        [11,11,14,11,11,14,11,11],
+        [11,11,14,11,11,14,11,11],
+        [11,11,11,11,11,11,11,11],
+        [0,11,11,11,11,11,11,0],
+        [11,0,11,11,11,11,0,11],
+        [0,11,0,11,11,0,11,0],
+        [0,0,11,0,0,11,0,0],
+    ],
+    TABLET: [
+        [0,12,12,12,12,12,12,0],
+        [12,13,13,13,13,13,13,12],
+        [12,13,12,12,12,12,13,12],
+        [12,13,12,13,13,12,13,12],
+        [12,13,12,13,13,12,13,12],
+        [12,13,12,12,12,12,13,12],
+        [12,13,13,13,13,13,13,12],
+        [0,12,12,12,12,12,12,0],
+    ],
+    CLEAR_ITEM: [
+        [0,0,0,9,9,0,0,0],
+        [0,0,9,15,15,9,0,0],
+        [0,9,15,9,9,15,9,0],
+        [9,15,9,9,9,9,15,9],
+        [9,15,9,9,9,9,15,9],
+        [0,9,15,9,9,15,9,0],
+        [0,0,9,15,15,9,0,0],
+        [0,0,0,9,9,0,0,0],
+    ],
 };
 
-// タイルタイプ
-const TILES = {
-    GROUND: 0,
-    GRASS: 1,
-    ROCK: 2,
-    GHOST: 3,
-    PLAYER: 4
+// ===== プロトタイプマップ 20×15 =====
+// 岩壁（col 8, col 12）が中央を縦断し、row 7 の通路（ゴーストが守る）が唯一の東西通路
+const PROTOTYPE_MAP = [
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+    [2,0,0,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,2],
+    [2,0,1,1,0,0,0,0,2,0,0,0,2,0,0,0,1,1,0,2],
+    [2,0,1,0,0,0,0,0,2,0,0,0,2,0,0,0,0,1,0,2],
+    [2,0,0,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,2],
+    [2,0,0,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,2],
+    [2,0,0,0,0,0,0,0,2,2,2,2,2,0,0,0,0,0,0,2],
+    [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+    [2,0,0,0,0,0,0,0,2,2,2,2,2,0,0,0,0,0,0,2],
+    [2,0,0,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,2],
+    [2,0,0,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,2],
+    [2,0,1,0,0,0,0,0,2,0,0,0,2,0,0,0,0,1,0,2],
+    [2,0,1,1,0,0,0,0,2,0,0,0,2,0,0,0,1,1,0,2],
+    [2,0,0,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,2],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+];
+
+// ===== ステージエンティティ配置 =====
+const PROTOTYPE_STAGE = {
+    playerStart: { x: 1, y: 7 },
+    npcs: [
+        {
+            id: 'npc_tanaka',
+            x: 5, y: 3,
+            name: '田中さん（同僚）',
+            dialogues: [
+                '田中: おはようございます！お久しぶりですね。',
+                '田中: 体の具合はいかがですか？今日は無理しないでくださいね。',
+                '田中: ゆっくりペースで大丈夫ですよ。応援してます！',
+            ],
+            mpCost: -2,
+        },
+        {
+            id: 'npc_yamada',
+            x: 16, y: 4,
+            name: '山田部長（上司）',
+            dialogues: [
+                '山田部長: ……戻ってきたか。',
+                '山田部長: 休んでいた分、仕事が溜まっているが……',
+                '山田部長: まあ、今日は様子見だ。早めに上がっていい。',
+            ],
+            mpCost: -15,
+        },
+    ],
+    ghosts: [
+        {
+            id: 'ghost_anxiety',
+            x: 9, y: 7,
+            type: 'ghost',
+            name: '不安のおばけ',
+            hp: 80, maxHp: 80,
+            weak: ['breathing', 'mindfulness'],
+            attackDamage: [8, 15],
+            battleIntro: '不安のおばけが立ちはだかった！物理攻撃は効かないようだ……',
+        },
+    ],
+    monsters: [
+        {
+            id: 'monster_stress',
+            x: 14, y: 11,
+            type: 'monster',
+            name: 'ストレスモンスター',
+            hp: 50, maxHp: 50,
+            attackDamage: [5, 12],
+            battleIntro: 'ストレスモンスターが現れた！',
+        },
+    ],
+    tablets: [
+        {
+            id: 'tablet_monitoring',
+            x: 4, y: 11,
+            name: 'セルフモニタリングの石板',
+            knowledge: '【セルフモニタリング】\n\n自分の状態を観察することで、\n気づかないうちに失われていた\nエネルギーに気づくことができます。\n\n─── MPの存在に気づいた ───',
+            unlocks: 'mp',
+        },
+    ],
+    clearItem: { id: 'clear', x: 18, y: 7 },
 };
 
-// プレイヤーの向き
-const DIRECTIONS = {
-    UP: 0,
-    RIGHT: 1,
-    DOWN: 2,
-    LEFT: 3
-};
+// ===== CBT技法 =====
+const CBT_TECHNIQUES = [
+    { id: 'breathing',               name: '呼吸法',         mpCost: 5,  damage: 20 },
+    { id: 'mindfulness',             name: 'マインドフルネス', mpCost: 10, damage: 28 },
+    { id: 'cognitive_restructuring', name: '認知再構成',      mpCost: 15, damage: 35 },
+];
 
-// ゲーム状態
+// ===== ゲーム状態 =====
 const game = {
     canvas: null,
     ctx: null,
-    player: { 
-        x: 10, 
-        y: 7,
-        direction: DIRECTIONS.UP,  // 初期は上向き
-        animX: 10,  // アニメーション用の実座標
-        animY: 7,
-        isMoving: false  // 移動中フラグ
+    player: {
+        x: 1, y: 7,
+        direction: DIRECTIONS.RIGHT,
+        animX: 1, animY: 7,
+        isMoving: false,
+    },
+    status: {
+        hp: { value: 100, max: 100, visibility: VISIBILITY.NUMERIC },
+        mp: { value: 100, max: 100, visibility: VISIBILITY.HIDDEN },
     },
     map: [],
-    tilePatterns: {},  // タイルごとの固定パターン
-    lastMapRegenTime: 0,
-    animationFrame: null
+    tilePatterns: {},
+    entities: { npcs: [], ghosts: [], monsters: [], tablets: [], clearItem: null },
+    state: 'playing', // 'playing' | 'dialogue' | 'battle' | 'tablet' | 'clear' | 'gameover'
+    dialogue: null,
+    battle: null,
+    animationFrame: null,
+    notificationTimer: null,
 };
 
-// マップの初期化（ランダムに配置）
-function initMap() {
-    game.map = [];
-    game.tilePatterns = {};  // パターンをリセット
-    
-    // 累積比率を計算
-    const cumulativeRates = [];
-    let sum = 0;
-    for (const key in TILE_SPAWN_RATES) {
-        sum += TILE_SPAWN_RATES[key];
-        cumulativeRates.push({ type: TILES[key], rate: sum });
-    }
-    
-    for (let y = 0; y < GRID_HEIGHT; y++) {
-        game.map[y] = [];
-        for (let x = 0; x < GRID_WIDTH; x++) {
-            // ランダムに地形を配置（比率に基づく）
-            const rand = Math.random();
-            let tileType = TILES.GROUND;
-            
-            for (const entry of cumulativeRates) {
-                if (rand < entry.rate) {
-                    tileType = entry.type;
-                    break;
-                }
-            }
-            
-            game.map[y][x] = tileType;
-            
-            // 各タイルの固定パターンを生成
-            const patternKey = `${x}_${y}`;
-            game.tilePatterns[patternKey] = generateTilePattern(tileType);
+// ===== スプライト描画 =====
+function drawSprite(ctx, sprite, x, y, pixelSize) {
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            const ci = sprite[row][col];
+            if (ci === 0 || !PALETTE[ci]) continue;
+            ctx.fillStyle = PALETTE[ci];
+            ctx.fillRect(x + col * pixelSize, y + row * pixelSize, pixelSize, pixelSize);
         }
     }
-    
-    // プレイヤーの初期位置を地面にする
-    game.map[game.player.y][game.player.x] = TILES.GROUND;
-    const playerKey = `${game.player.x}_${game.player.y}`;
-    game.tilePatterns[playerKey] = generateTilePattern(TILES.GROUND);
-    
-    // マップ再生成時刻を記録
-    game.lastMapRegenTime = Date.now();
 }
 
-// タイルごとの固定パターンを生成
-function generateTilePattern(tileType) {
-    const pattern = { type: tileType, data: [] };
-    
-    switch(tileType) {
-        case TILES.GROUND:
-            // 地面の模様位置を固定
-            for (let i = 0; i < 4; i++) {
-                pattern.data.push({
-                    x: Math.random(),
-                    y: Math.random()
-                });
-            }
-            break;
-            
-        case TILES.GRASS:
-            // 草の模様を固定
-            for (let i = 0; i < 3; i++) {
-                for (let j = 0; j < 3; j++) {
-                    pattern.data.push({
-                        i: i,
-                        j: j,
-                        show: Math.random() > 0.5
-                    });
-                }
-            }
-            break;
+// ===== タイルパターン生成（固定） =====
+function generateTilePattern(type) {
+    const p = { data: [] };
+    if (type === TILES.GROUND) {
+        for (let i = 0; i < 4; i++) p.data.push({ x: Math.random(), y: Math.random() });
+    } else if (type === TILES.GRASS) {
+        for (let i = 0; i < 3; i++)
+            for (let j = 0; j < 3; j++)
+                p.data.push({ i, j, show: Math.random() > 0.5 });
     }
-    
-    return pattern;
+    return p;
 }
 
-// ドット絵を描画する関数（固定パターン使用）
-function drawPixelArt(ctx, x, y, size, type, direction = DIRECTIONS.UP, pattern = null) {
-    const pixelSize = size / 8; // 8x8のドット絵
-    
-    switch(type) {
+// ===== タイル描画 =====
+function drawTile(ctx, x, y, size, type, pattern) {
+    const px = Math.floor(x);
+    const py = Math.floor(y);
+    const ps = size / 8;
+
+    switch (type) {
         case TILES.GROUND:
-            // 地面（茶色）
             ctx.fillStyle = '#8B7355';
-            ctx.fillRect(x, y, size, size);
-            ctx.fillStyle = '#A0826D';
-            if (pattern && pattern.data) {
-                for (let i = 0; i < pattern.data.length; i++) {
-                    const px = x + pattern.data[i].x * size;
-                    const py = y + pattern.data[i].y * size;
-                    ctx.fillRect(px, py, pixelSize, pixelSize);
+            ctx.fillRect(px, py, size, size);
+            ctx.fillStyle = '#9B8368';
+            if (pattern) {
+                for (const d of pattern.data) {
+                    ctx.fillRect(px + Math.floor(d.x * 8) * ps, py + Math.floor(d.y * 8) * ps, ps, ps);
                 }
             }
             break;
-            
+
         case TILES.GRASS:
-            // 草（緑）
-            ctx.fillStyle = '#2ECC40';
-            ctx.fillRect(x, y, size, size);
-            ctx.fillStyle = '#01FF70';
-            // 草の模様（固定パターン使用）
-            if (pattern && pattern.data) {
-                for (let idx = 0; idx < pattern.data.length; idx++) {
-                    const item = pattern.data[idx];
-                    if (item.show) {
-                        ctx.fillRect(x + item.i * pixelSize * 2.5, y + item.j * pixelSize * 2.5, pixelSize, pixelSize * 2);
-                    }
+            ctx.fillStyle = '#2D8C30';
+            ctx.fillRect(px, py, size, size);
+            if (pattern) {
+                for (const it of pattern.data) {
+                    if (!it.show) continue;
+                    ctx.fillStyle = '#3ECC44';
+                    ctx.fillRect(px + it.i * ps * 2 + ps, py + it.j * ps * 2, ps, ps * 2);
+                    ctx.fillStyle = '#1EAC24';
+                    ctx.fillRect(px + it.i * ps * 2, py + it.j * ps * 2 + ps, ps, ps);
                 }
             }
             break;
-            
+
         case TILES.ROCK:
-            // 岩（グレー）
             ctx.fillStyle = '#555555';
-            ctx.fillRect(x, y, size, size);
+            ctx.fillRect(px, py, size, size);
             ctx.fillStyle = '#777777';
-            ctx.fillRect(x + pixelSize, y + pixelSize, size - pixelSize * 2, size - pixelSize * 2);
+            ctx.fillRect(px + ps, py + ps, size - ps * 2, size - ps * 2);
+            ctx.fillStyle = '#888888';
+            ctx.fillRect(px + ps * 2, py + ps * 2, ps * 2, ps);
             ctx.fillStyle = '#333333';
-            ctx.fillRect(x + pixelSize * 2, y + pixelSize * 3, pixelSize * 2, pixelSize);
-            break;
-            
-        case TILES.GHOST:
-            // おばけ（白）
-            ctx.fillStyle = '#FFFFFF';
-            // 頭部
-            ctx.fillRect(x + pixelSize * 2, y + pixelSize, pixelSize * 4, pixelSize * 4);
-            // 体部
-            ctx.fillRect(x + pixelSize, y + pixelSize * 3, pixelSize * 6, pixelSize * 3);
-            // 裾のギザギザ
-            ctx.fillRect(x + pixelSize, y + pixelSize * 6, pixelSize * 2, pixelSize);
-            ctx.fillRect(x + pixelSize * 4, y + pixelSize * 6, pixelSize * 2, pixelSize);
-            // 目
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(x + pixelSize * 2.5, y + pixelSize * 2.5, pixelSize, pixelSize);
-            ctx.fillRect(x + pixelSize * 4.5, y + pixelSize * 2.5, pixelSize, pixelSize);
-            break;
-            
-        case TILES.PLAYER:
-            // 矢印（主人公）- 向きによって変化
-            ctx.fillStyle = '#FF4136';
-            ctx.strokeStyle = '#85001B';
-            ctx.lineWidth = 1;
-            
-            switch(direction) {
-                case DIRECTIONS.UP:
-                    // 上向き矢印
-                    ctx.beginPath();
-                    ctx.moveTo(x + size / 2, y + pixelSize);
-                    ctx.lineTo(x + size - pixelSize, y + pixelSize * 3);
-                    ctx.lineTo(x + pixelSize * 5, y + pixelSize * 3);
-                    ctx.lineTo(x + pixelSize * 5, y + size - pixelSize);
-                    ctx.lineTo(x + pixelSize * 3, y + size - pixelSize);
-                    ctx.lineTo(x + pixelSize * 3, y + pixelSize * 3);
-                    ctx.lineTo(x + pixelSize, y + pixelSize * 3);
-                    ctx.closePath();
-                    break;
-                    
-                case DIRECTIONS.RIGHT:
-                    // 右向き矢印
-                    ctx.beginPath();
-                    ctx.moveTo(x + size - pixelSize, y + size / 2);
-                    ctx.lineTo(x + size - pixelSize * 3, y + pixelSize);
-                    ctx.lineTo(x + size - pixelSize * 3, y + pixelSize * 3);
-                    ctx.lineTo(x + pixelSize, y + pixelSize * 3);
-                    ctx.lineTo(x + pixelSize, y + pixelSize * 5);
-                    ctx.lineTo(x + size - pixelSize * 3, y + pixelSize * 5);
-                    ctx.lineTo(x + size - pixelSize * 3, y + size - pixelSize);
-                    ctx.closePath();
-                    break;
-                    
-                case DIRECTIONS.DOWN:
-                    // 下向き矢印
-                    ctx.beginPath();
-                    ctx.moveTo(x + size / 2, y + size - pixelSize);
-                    ctx.lineTo(x + pixelSize, y + size - pixelSize * 3);
-                    ctx.lineTo(x + pixelSize * 3, y + size - pixelSize * 3);
-                    ctx.lineTo(x + pixelSize * 3, y + pixelSize);
-                    ctx.lineTo(x + pixelSize * 5, y + pixelSize);
-                    ctx.lineTo(x + pixelSize * 5, y + size - pixelSize * 3);
-                    ctx.lineTo(x + size - pixelSize, y + size - pixelSize * 3);
-                    ctx.closePath();
-                    break;
-                    
-                case DIRECTIONS.LEFT:
-                    // 左向き矢印
-                    ctx.beginPath();
-                    ctx.moveTo(x + pixelSize, y + size / 2);
-                    ctx.lineTo(x + pixelSize * 3, y + size - pixelSize);
-                    ctx.lineTo(x + pixelSize * 3, y + pixelSize * 5);
-                    ctx.lineTo(x + size - pixelSize, y + pixelSize * 5);
-                    ctx.lineTo(x + size - pixelSize, y + pixelSize * 3);
-                    ctx.lineTo(x + pixelSize * 3, y + pixelSize * 3);
-                    ctx.lineTo(x + pixelSize * 3, y + pixelSize);
-                    ctx.closePath();
-                    break;
-            }
-            
-            ctx.fill();
-            ctx.stroke();
+            ctx.fillRect(px + ps * 2, py + ps * 4, ps * 3, ps);
             break;
     }
 }
 
-// 画面全体を描画
+// ===== 全体描画 =====
 function render() {
-    // 背景をクリア
+    game.ctx.imageSmoothingEnabled = false;
     game.ctx.fillStyle = '#1a252f';
     game.ctx.fillRect(0, 0, game.canvas.width, game.canvas.height);
-    
-    // マップを描画（固定パターン使用）
-    for (let y = 0; y < GRID_HEIGHT; y++) {
-        for (let x = 0; x < GRID_WIDTH; x++) {
-            const tileType = game.map[y][x];
-            const patternKey = `${x}_${y}`;
-            const pattern = game.tilePatterns[patternKey];
-            
-            drawPixelArt(
-                game.ctx, 
-                x * TILE_SIZE, 
-                y * TILE_SIZE, 
-                TILE_SIZE, 
-                tileType,
-                DIRECTIONS.UP,
-                pattern
-            );
-            
-            // グリッド線（薄く）
-            game.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-            game.ctx.lineWidth = 1;
-            game.ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-        }
+
+    for (let y = 0; y < GRID_HEIGHT; y++)
+        for (let x = 0; x < GRID_WIDTH; x++)
+            drawTile(game.ctx, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, game.map[y][x], game.tilePatterns[`${x}_${y}`]);
+
+    const ps = TILE_SIZE / 8;
+
+    for (const e of game.entities.npcs) {
+        drawTile(game.ctx, e.x * TILE_SIZE, e.y * TILE_SIZE, TILE_SIZE, TILES.GROUND, game.tilePatterns[`${e.x}_${e.y}`]);
+        drawSprite(game.ctx, SPRITES.NPC, e.x * TILE_SIZE, e.y * TILE_SIZE, ps);
     }
-    
-    // プレイヤーを描画（最前面、アニメーション座標使用）
-    drawPixelArt(
-        game.ctx, 
-        game.player.animX * TILE_SIZE, 
-        game.player.animY * TILE_SIZE, 
-        TILE_SIZE, 
-        TILES.PLAYER,
-        game.player.direction
+    for (const e of game.entities.ghosts) {
+        drawTile(game.ctx, e.x * TILE_SIZE, e.y * TILE_SIZE, TILE_SIZE, TILES.GROUND, game.tilePatterns[`${e.x}_${e.y}`]);
+        drawSprite(game.ctx, SPRITES.GHOST, e.x * TILE_SIZE, e.y * TILE_SIZE, ps);
+    }
+    for (const e of game.entities.monsters) {
+        drawTile(game.ctx, e.x * TILE_SIZE, e.y * TILE_SIZE, TILE_SIZE, TILES.GROUND, game.tilePatterns[`${e.x}_${e.y}`]);
+        drawSprite(game.ctx, SPRITES.MONSTER, e.x * TILE_SIZE, e.y * TILE_SIZE, ps);
+    }
+    for (const e of game.entities.tablets) {
+        drawTile(game.ctx, e.x * TILE_SIZE, e.y * TILE_SIZE, TILE_SIZE, TILES.GROUND, game.tilePatterns[`${e.x}_${e.y}`]);
+        drawSprite(game.ctx, SPRITES.TABLET, e.x * TILE_SIZE, e.y * TILE_SIZE, ps);
+    }
+    if (game.entities.clearItem) {
+        const ci = game.entities.clearItem;
+        drawTile(game.ctx, ci.x * TILE_SIZE, ci.y * TILE_SIZE, TILE_SIZE, TILES.GROUND, game.tilePatterns[`${ci.x}_${ci.y}`]);
+        drawSprite(game.ctx, SPRITES.CLEAR_ITEM, ci.x * TILE_SIZE, ci.y * TILE_SIZE, ps);
+    }
+
+    const dirSprite = {
+        [DIRECTIONS.UP]:    SPRITES.PLAYER_UP,
+        [DIRECTIONS.RIGHT]: SPRITES.PLAYER_RIGHT,
+        [DIRECTIONS.DOWN]:  SPRITES.PLAYER_DOWN,
+        [DIRECTIONS.LEFT]:  SPRITES.PLAYER_LEFT,
+    };
+    const spr = dirSprite[game.player.direction] || SPRITES.PLAYER_DOWN;
+    drawSprite(game.ctx, spr,
+        Math.floor(game.player.animX * TILE_SIZE),
+        Math.floor(game.player.animY * TILE_SIZE),
+        ps
     );
 }
 
-// イージング関数（ease-out）
-function easeOutCubic(t) {
-    return 1 - Math.pow(1 - t, 3);
-}
+// ===== アニメーション =====
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 
-// 移動アニメーション
-function animateMove(startX, startY, endX, endY, startTime) {
-    const currentTime = Date.now();
-    const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / MOVE_ANIMATION_DURATION, 1);
-    const easedProgress = easeOutCubic(progress);
-    
-    // アニメーション座標を更新
-    game.player.animX = startX + (endX - startX) * easedProgress;
-    game.player.animY = startY + (endY - startY) * easedProgress;
-    
+function animateMove(sx, sy, ex, ey, t0) {
+    const p = Math.min((Date.now() - t0) / MOVE_ANIMATION_DURATION, 1);
+    const e = easeOutCubic(p);
+    game.player.animX = sx + (ex - sx) * e;
+    game.player.animY = sy + (ey - sy) * e;
     render();
-    
-    if (progress < 1) {
-        // アニメーション継続
-        game.animationFrame = requestAnimationFrame(() => {
-            animateMove(startX, startY, endX, endY, startTime);
-        });
+    if (p < 1) {
+        game.animationFrame = requestAnimationFrame(() => animateMove(sx, sy, ex, ey, t0));
     } else {
-        // アニメーション完了
-        game.player.animX = endX;
-        game.player.animY = endY;
+        game.player.animX = ex;
+        game.player.animY = ey;
         game.player.isMoving = false;
         render();
     }
 }
 
-// プレイヤーの移動
-function movePlayer(dx, dy) {
-    // 移動中は新しい移動を受け付けない
-    if (game.player.isMoving) {
-        return false;
-    }
-    
-    // 移動方向に応じて向きを更新
-    if (dy < 0) {
-        game.player.direction = DIRECTIONS.UP;
-    } else if (dy > 0) {
-        game.player.direction = DIRECTIONS.DOWN;
-    } else if (dx < 0) {
-        game.player.direction = DIRECTIONS.LEFT;
-    } else if (dx > 0) {
-        game.player.direction = DIRECTIONS.RIGHT;
-    }
-    
-    const newX = game.player.x + dx;
-    const newY = game.player.y + dy;
-    
-    // 範囲チェック
-    if (newX < 0 || newX >= GRID_WIDTH || newY < 0 || newY >= GRID_HEIGHT) {
-        // 向きだけ変更して描画
-        render();
-        return false;
-    }
-    
-    // 衝突判定（岩は通過不可）
-    const targetTile = game.map[newY][newX];
-    if (targetTile === TILES.ROCK) {
-        // 向きだけ変更して描画
-        render();
-        return false;
-    }
-    
-    // おばけとの遭遇
-    if (targetTile === TILES.GHOST) {
-        alert('👻 おばけに遭遇した！');
-        // おばけを消す
-        game.map[newY][newX] = TILES.GROUND;
-        const patternKey = `${newX}_${newY}`;
-        game.tilePatterns[patternKey] = generateTilePattern(TILES.GROUND);
-    }
-    
-    // 移動アニメーション開始
-    game.player.isMoving = true;
-    const startX = game.player.x;
-    const startY = game.player.y;
-    
-    game.player.x = newX;
-    game.player.y = newY;
-    
-    animateMove(startX, startY, newX, newY, Date.now());
-    
-    return true;
-}
-
-// キーボード入力処理
-function handleKeyPress(event) {
-    const key = event.key.toLowerCase();
-    
-    switch(key) {
-        case 'arrowup':
-        case 'w':
-            movePlayer(0, -1);
-            break;
-        case 'arrowdown':
-        case 's':
-            movePlayer(0, 1);
-            break;
-        case 'arrowleft':
-        case 'a':
-            movePlayer(-1, 0);
-            break;
-        case 'arrowright':
-        case 'd':
-            movePlayer(1, 0);
-            break;
-    }
-}
-
-// マップ再生成チェック
-function checkMapRegeneration() {
-    const currentTime = Date.now();
-    if (currentTime - game.lastMapRegenTime >= MAP_REGENERATE_INTERVAL) {
-        console.log('マップを再生成します！');
-        
-        // プレイヤーの現在位置を保存
-        const playerX = game.player.x;
-        const playerY = game.player.y;
-        
-        // マップ再生成
-        initMap();
-        
-        // プレイヤー位置を復元
-        game.player.x = playerX;
-        game.player.y = playerY;
-        game.player.animX = playerX;
-        game.player.animY = playerY;
-        
-        // プレイヤーの位置を地面にする
-        game.map[playerY][playerX] = TILES.GROUND;
-        const patternKey = `${playerX}_${playerY}`;
-        game.tilePatterns[patternKey] = generateTilePattern(TILES.GROUND);
-        
-        render();
-    }
-    
-    // 次のチェックをスケジュール
-    setTimeout(checkMapRegeneration, 1000); // 1秒ごとにチェック
-}
-
-// ゲームの初期化
-function init() {
-    game.canvas = document.getElementById('gameCanvas');
-    game.ctx = game.canvas.getContext('2d');
-    
-    // キャンバスサイズを設定
-    game.canvas.width = GRID_WIDTH * TILE_SIZE;
-    game.canvas.height = GRID_HEIGHT * TILE_SIZE;
-    
-    // マップ初期化
-    initMap();
-    
-    // プレイヤーのアニメーション座標を初期化
-    game.player.animX = game.player.x;
-    game.player.animY = game.player.y;
-    
-    // イベントリスナー登録
-    document.addEventListener('keydown', handleKeyPress);
-    
-    // マップ再生成チェック開始
-    checkMapRegeneration();
-    
-    // 初回描画
-    render();
-    
-    console.log('ゲーム開始！矢印キーまたはWASDで移動できます。');
-    console.log(`マップは${MAP_REGENERATE_INTERVAL / 1000}秒ごとに再生成されます。`);
-}
-
-// ページ読み込み完了後にゲームを初期化
-window.addEventListener('load', init);
-
-// タイル比率UIの初期化
-function initTileRateUI() {
-    const sliders = {
-        ground: document.getElementById('groundSlider'),
-        grass: document.getElementById('grassSlider'),
-        rock: document.getElementById('rockSlider'),
-        ghost: document.getElementById('ghostSlider')
-    };
-
-    const valueLabels = {
-        ground: document.getElementById('groundValue'),
-        grass: document.getElementById('grassValue'),
-        rock: document.getElementById('rockValue'),
-        ghost: document.getElementById('ghostValue')
-    };
-
-    const totalIndicator = document.getElementById('totalIndicator');
-
-    // スライダー変更時の処理
-    function updateTotal() {
-        const ground = parseInt(sliders.ground.value);
-        const grass = parseInt(sliders.grass.value);
-        const rock = parseInt(sliders.rock.value);
-        const ghost = parseInt(sliders.ghost.value);
-        const total = ground + grass + rock + ghost;
-
-        // 値の表示を更新
-        valueLabels.ground.textContent = ground + '%';
-        valueLabels.grass.textContent = grass + '%';
-        valueLabels.rock.textContent = rock + '%';
-        valueLabels.ghost.textContent = ghost + '%';
-
-        // 合計の表示を更新
-        totalIndicator.textContent = `合計: ${total}%`;
-        
-        // 合計が100%かどうかで色を変更
-        if (total === 100) {
-            totalIndicator.className = 'total-indicator valid';
-        } else {
-            totalIndicator.className = 'total-indicator invalid';
+// ===== ステータス管理 =====
+function applyStatusChange(changes) {
+    for (const [k, d] of Object.entries(changes)) {
+        if (game.status[k]) {
+            game.status[k].value = Math.max(0, Math.min(game.status[k].max, game.status[k].value + d));
         }
     }
-
-    // 各スライダーにイベントリスナーを追加
-    sliders.ground.addEventListener('input', updateTotal);
-    sliders.grass.addEventListener('input', updateTotal);
-    sliders.rock.addEventListener('input', updateTotal);
-    sliders.ghost.addEventListener('input', updateTotal);
+    updateStatusUI();
+    if (game.status.hp.value <= 0) showGameOver();
 }
 
-// タイル比率を適用してマップ再生成
-function applyTileRates() {
-    const ground = parseInt(document.getElementById('groundSlider').value);
-    const grass = parseInt(document.getElementById('grassSlider').value);
-    const rock = parseInt(document.getElementById('rockSlider').value);
-    const ghost = parseInt(document.getElementById('ghostSlider').value);
-    const total = ground + grass + rock + ghost;
+function updateStatusUI() {
+    const hp = game.status.hp;
+    document.getElementById('hpValue').textContent = Math.floor(hp.value);
+    const hpPct = hp.value / hp.max;
+    const hpBar = document.getElementById('hpBar');
+    hpBar.style.width = (hpPct * 100) + '%';
+    hpBar.style.backgroundColor = hpPct > 0.5 ? '#e74c3c' : hpPct > 0.25 ? '#e67e22' : '#c0392b';
 
-    if (total !== 100) {
-        alert('❌ 合計が100%になるように調整してください。\n現在の合計: ' + total + '%');
+    const mp = game.status.mp;
+    const mpPanel = document.getElementById('mpPanel');
+    if (mp.visibility === VISIBILITY.HIDDEN) {
+        mpPanel.style.display = 'none';
+    } else {
+        mpPanel.style.display = 'flex';
+        const mpBar = document.getElementById('mpBar');
+        if (mp.visibility === VISIBILITY.REDACTED) {
+            document.getElementById('mpValue').textContent = '███';
+            mpBar.style.display = 'none';
+        } else if (mp.visibility === VISIBILITY.LEVEL) {
+            const v = mp.value;
+            document.getElementById('mpValue').textContent = v > 66 ? 'たくさん' : v > 33 ? 'ふつう' : 'ほとんど無い';
+            mpBar.style.display = 'none';
+        } else {
+            document.getElementById('mpValue').textContent = Math.floor(mp.value);
+            mpBar.style.display = 'block';
+            mpBar.style.width = (mp.value / mp.max * 100) + '%';
+        }
+    }
+}
+
+function showNotification(text) {
+    const el = document.getElementById('notification');
+    el.textContent = text;
+    el.style.display = 'block';
+    el.style.opacity = '1';
+    el.style.transition = 'none';
+    if (game.notificationTimer) clearTimeout(game.notificationTimer);
+    game.notificationTimer = setTimeout(() => {
+        el.style.transition = 'opacity 0.4s';
+        el.style.opacity = '0';
+        setTimeout(() => { el.style.display = 'none'; }, 400);
+    }, 2500);
+}
+
+// ===== マップ初期化 =====
+function initMap() {
+    game.map = PROTOTYPE_MAP.map(r => [...r]);
+    game.tilePatterns = {};
+    for (let y = 0; y < GRID_HEIGHT; y++)
+        for (let x = 0; x < GRID_WIDTH; x++)
+            game.tilePatterns[`${x}_${y}`] = generateTilePattern(game.map[y][x]);
+
+    game.entities = {
+        npcs:     PROTOTYPE_STAGE.npcs.map(e => ({ ...e })),
+        ghosts:   PROTOTYPE_STAGE.ghosts.map(e => ({ ...e })),
+        monsters: PROTOTYPE_STAGE.monsters.map(e => ({ ...e })),
+        tablets:  PROTOTYPE_STAGE.tablets.map(e => ({ ...e })),
+        clearItem: { ...PROTOTYPE_STAGE.clearItem },
+    };
+
+    const ps = PROTOTYPE_STAGE.playerStart;
+    game.player.x = ps.x; game.player.y = ps.y;
+    game.player.animX = ps.x; game.player.animY = ps.y;
+    game.player.direction = DIRECTIONS.RIGHT;
+    game.player.isMoving = false;
+
+    game.status = {
+        hp: { value: 100, max: 100, visibility: VISIBILITY.NUMERIC },
+        mp: { value: 100, max: 100, visibility: VISIBILITY.HIDDEN },
+    };
+    game.state = 'playing';
+    game.dialogue = null;
+    game.battle = null;
+}
+
+// ===== 移動 =====
+function findAt(list, x, y) {
+    return list.find(e => e.x === x && e.y === y) || null;
+}
+
+function movePlayer(dx, dy) {
+    if (game.player.isMoving || game.state !== 'playing') return;
+
+    if      (dy < 0) game.player.direction = DIRECTIONS.UP;
+    else if (dy > 0) game.player.direction = DIRECTIONS.DOWN;
+    else if (dx < 0) game.player.direction = DIRECTIONS.LEFT;
+    else if (dx > 0) game.player.direction = DIRECTIONS.RIGHT;
+
+    const nx = game.player.x + dx;
+    const ny = game.player.y + dy;
+
+    if (nx < 0 || nx >= GRID_WIDTH || ny < 0 || ny >= GRID_HEIGHT) { render(); return; }
+    if (game.map[ny][nx] === TILES.ROCK) { render(); return; }
+
+    const npc     = findAt(game.entities.npcs,     nx, ny);
+    const ghost   = findAt(game.entities.ghosts,   nx, ny);
+    const monster = findAt(game.entities.monsters, nx, ny);
+    const tablet  = findAt(game.entities.tablets,  nx, ny);
+    const ci = game.entities.clearItem;
+
+    if (npc)                               { render(); showDialogue(npc);    return; }
+    if (ghost)                             { render(); startBattle(ghost);   return; }
+    if (monster)                           { render(); startBattle(monster); return; }
+    if (tablet)                            { render(); collectTablet(tablet); return; }
+    if (ci && ci.x === nx && ci.y === ny)  { render(); showClearScreen();    return; }
+
+    applyStatusChange({ mp: -0.5 });
+
+    game.player.isMoving = true;
+    const sx = game.player.x, sy = game.player.y;
+    game.player.x = nx;
+    game.player.y = ny;
+    animateMove(sx, sy, nx, ny, Date.now());
+}
+
+// ===== 会話システム =====
+function showDialogue(npc) {
+    game.state = 'dialogue';
+    game.dialogue = { npc, line: 0 };
+    document.getElementById('npcName').textContent = npc.name;
+    document.getElementById('dialogueText').textContent = npc.dialogues[0];
+    document.getElementById('dialogueBox').style.display = 'flex';
+    applyStatusChange({ mp: npc.mpCost });
+}
+
+function advanceDialogue() {
+    if (game.state !== 'dialogue' || !game.dialogue) return;
+    game.dialogue.line++;
+    if (game.dialogue.line >= game.dialogue.npc.dialogues.length) {
+        closeDialogue();
+    } else {
+        document.getElementById('dialogueText').textContent = game.dialogue.npc.dialogues[game.dialogue.line];
+    }
+}
+
+function closeDialogue() {
+    game.state = 'playing';
+    game.dialogue = null;
+    document.getElementById('dialogueBox').style.display = 'none';
+    render();
+}
+
+// ===== 石板システム =====
+function collectTablet(tablet) {
+    game.entities.tablets = game.entities.tablets.filter(t => t.id !== tablet.id);
+    if (tablet.unlocks === 'mp') game.status.mp.visibility = VISIBILITY.REDACTED;
+
+    game.state = 'tablet';
+    document.getElementById('tabletName').textContent = tablet.name;
+    document.getElementById('tabletText').textContent = tablet.knowledge;
+    document.getElementById('tabletScreen').style.display = 'flex';
+
+    updateStatusUI();
+    showNotification('石板を入手！MPの存在に気づいた！');
+    render();
+}
+
+function closeTablet() {
+    game.state = 'playing';
+    document.getElementById('tabletScreen').style.display = 'none';
+    render();
+}
+
+// ===== 戦闘システム =====
+function startBattle(enemy) {
+    game.state = 'battle';
+    game.battle = { enemy: { ...enemy }, playerTurn: true };
+
+    document.getElementById('battleScreen').style.display = 'flex';
+    document.getElementById('battleLog').innerHTML = '';
+
+    const attackBtn = document.getElementById('attackBtn');
+    if (enemy.type === 'ghost') {
+        attackBtn.textContent = '攻撃（無効）';
+        attackBtn.style.opacity = '0.5';
+    } else {
+        attackBtn.textContent = '攻撃';
+        attackBtn.style.opacity = '1';
+    }
+
+    updateBattleUI();
+    setTimeout(() => addBattleLog(enemy.battleIntro || `${enemy.name}が現れた！`), 200);
+    setBattleButtonsEnabled(true);
+}
+
+function updateBattleUI() {
+    if (!game.battle) return;
+    const e = game.battle.enemy;
+    document.getElementById('enemyName').textContent = e.name;
+    document.getElementById('enemyHpBar').style.width = (e.hp / e.maxHp * 100) + '%';
+    document.getElementById('enemyHpText').textContent = `HP: ${e.hp} / ${e.maxHp}`;
+    document.getElementById('playerBattleHp').textContent = `HP: ${Math.floor(game.status.hp.value)}`;
+
+    const mpEl = document.getElementById('playerBattleMp');
+    if (game.status.mp.visibility !== VISIBILITY.HIDDEN) {
+        mpEl.textContent = `MP: ${Math.floor(game.status.mp.value)}`;
+        mpEl.style.display = 'inline';
+    } else {
+        mpEl.style.display = 'none';
+    }
+}
+
+function setBattleButtonsEnabled(enabled) {
+    document.querySelectorAll('.battle-btn').forEach(b => { b.disabled = !enabled; });
+    if (enabled) {
+        for (const t of CBT_TECHNIQUES) {
+            const btn = document.getElementById(`tech_${t.id}`);
+            if (btn) btn.disabled = game.status.mp.value < t.mpCost;
+        }
+    }
+}
+
+function addBattleLog(text) {
+    const log = document.getElementById('battleLog');
+    const p = document.createElement('p');
+    p.textContent = text;
+    log.appendChild(p);
+    while (log.children.length > 8) log.removeChild(log.firstChild);
+    log.scrollTop = log.scrollHeight;
+}
+
+function doBattleAction(type, techId) {
+    if (!game.battle || !game.battle.playerTurn || game.state !== 'battle') return;
+    game.battle.playerTurn = false;
+    setBattleButtonsEnabled(false);
+
+    const enemy = game.battle.enemy;
+    let dmg = 0;
+
+    if (type === 'attack') {
+        if (enemy.type === 'ghost') {
+            addBattleLog('攻撃！……しかしおばけには効かなかった！');
+        } else {
+            dmg = 20;
+            addBattleLog(`攻撃！${dmg}のダメージを与えた！`);
+        }
+    } else if (type === 'technique') {
+        const tech = CBT_TECHNIQUES.find(t => t.id === techId);
+        if (!tech) { game.battle.playerTurn = true; setBattleButtonsEnabled(true); return; }
+        if (game.status.mp.value < tech.mpCost) {
+            addBattleLog('MPが足りない！');
+            game.battle.playerTurn = true;
+            setBattleButtonsEnabled(true);
+            return;
+        }
+        applyStatusChange({ mp: -tech.mpCost });
+        const isWeak = enemy.weak && enemy.weak.includes(techId);
+        dmg = Math.floor(tech.damage * (isWeak ? 2.0 : 1.0));
+        addBattleLog(`${tech.name}！${isWeak ? '弱点に効いた！' : ''}${dmg}のダメージ！`);
+
+    } else if (type === 'escape') {
+        addBattleLog('逃げた！');
+        setTimeout(closeBattle, 1200);
         return;
     }
 
-    // 比率を更新（%を0.0-1.0に変換）
-    TILE_SPAWN_RATES.GROUND = ground / 100;
-    TILE_SPAWN_RATES.GRASS = grass / 100;
-    TILE_SPAWN_RATES.ROCK = rock / 100;
-    TILE_SPAWN_RATES.GHOST = ghost / 100;
+    enemy.hp = Math.max(0, enemy.hp - dmg);
+    updateBattleUI();
 
-    // プレイヤーの現在位置を保存
-    const playerX = game.player.x;
-    const playerY = game.player.y;
+    if (enemy.hp <= 0) {
+        addBattleLog(`${enemy.name}を倒した！`);
+        setTimeout(() => {
+            if (enemy.type === 'ghost') {
+                game.entities.ghosts = game.entities.ghosts.filter(g => g.id !== enemy.id);
+            } else {
+                game.entities.monsters = game.entities.monsters.filter(m => m.id !== enemy.id);
+            }
+            closeBattle();
+            showNotification(`${enemy.name}を倒した！`);
+        }, 1500);
+        return;
+    }
 
-    // マップ再生成
-    initMap();
-
-    // プレイヤー位置を復元
-    game.player.x = playerX;
-    game.player.y = playerY;
-    game.player.animX = playerX;
-    game.player.animY = playerY;
-
-    // プレイヤーの位置を地面にする
-    game.map[playerY][playerX] = TILES.GROUND;
-    const patternKey = `${playerX}_${playerY}`;
-    game.tilePatterns[patternKey] = generateTilePattern(TILES.GROUND);
-
-    render();
-
-    console.log('✅ タイル比率を更新しました:', TILE_SPAWN_RATES);
-    alert('✅ 設定を適用してマップを再生成しました！');
+    setTimeout(enemyTurn, 900);
 }
 
-// UIの初期化もページ読み込み時に実行
-window.addEventListener('load', initTileRateUI);
+function enemyTurn() {
+    if (!game.battle || game.state !== 'battle') return;
+    const e = game.battle.enemy;
+    const [min, max] = e.attackDamage || [5, 12];
+    const dmg = Math.floor(Math.random() * (max - min + 1)) + min;
 
+    applyStatusChange({ hp: -dmg });
+    if (game.state !== 'battle') return; // HPが0になりゲームオーバーした場合
+
+    addBattleLog(`${e.name}の攻撃！${dmg}のダメージ！`);
+    updateBattleUI();
+    game.battle.playerTurn = true;
+    setBattleButtonsEnabled(true);
+}
+
+function closeBattle() {
+    game.state = 'playing';
+    game.battle = null;
+    document.getElementById('battleScreen').style.display = 'none';
+    render();
+}
+
+// ===== クリア =====
+function showClearScreen() {
+    game.state = 'clear';
+    game.entities.clearItem = null;
+    document.getElementById('clearHp').textContent = Math.floor(game.status.hp.value);
+    document.getElementById('clearMp').textContent =
+        game.status.mp.visibility !== VISIBILITY.HIDDEN
+            ? Math.floor(game.status.mp.value)
+            : '???';
+    document.getElementById('clearScreen').style.display = 'flex';
+    render();
+}
+
+// ===== ゲームオーバー =====
+function showGameOver() {
+    if (game.state === 'gameover') return;
+    game.state = 'gameover';
+    document.getElementById('battleScreen').style.display = 'none';
+    document.getElementById('gameoverScreen').style.display = 'flex';
+}
+
+// ===== リスタート =====
+function restartGame() {
+    ['clearScreen', 'gameoverScreen', 'dialogueBox', 'battleScreen', 'tabletScreen']
+        .forEach(id => { document.getElementById(id).style.display = 'none'; });
+    document.getElementById('battleLog').innerHTML = '';
+    initMap();
+    updateStatusUI();
+    render();
+}
+
+// ===== キーボード入力 =====
+function handleKeyPress(ev) {
+    const k = ev.key.toLowerCase();
+
+    if (game.state === 'dialogue') {
+        if (k === 'enter' || k === ' ' || k === 'z') { ev.preventDefault(); advanceDialogue(); }
+        return;
+    }
+    if (game.state === 'tablet') {
+        if (k === 'enter' || k === ' ' || k === 'z') { ev.preventDefault(); closeTablet(); }
+        return;
+    }
+    if (game.state === 'playing') {
+        const moves = {
+            arrowup: [0,-1], w: [0,-1],
+            arrowdown: [0,1], s: [0,1],
+            arrowleft: [-1,0], a: [-1,0],
+            arrowright: [1,0], d: [1,0],
+        };
+        if (moves[k]) { ev.preventDefault(); movePlayer(...moves[k]); }
+    }
+}
+
+// ===== 初期化 =====
+function init() {
+    game.canvas = document.getElementById('gameCanvas');
+    game.ctx = game.canvas.getContext('2d');
+    game.canvas.width  = GRID_WIDTH  * TILE_SIZE;
+    game.canvas.height = GRID_HEIGHT * TILE_SIZE;
+
+    initMap();
+    updateStatusUI();
+    document.addEventListener('keydown', handleKeyPress);
+    render();
+
+    console.log('復職RPG 起動。矢印キー または WASD で移動。Enter/Space でイベント続行。');
+}
+
+window.addEventListener('load', init);
